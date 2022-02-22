@@ -18,7 +18,7 @@ async function build(target) {
   // 因为有很多模块，开启子进程，然后使用rollup进行构建打包
   await execa(
     'rollup',
-    ['-c', '--environment', `TARGET:${target}`],
+    ['-c', '--environment', `TARGET:${target}`], // rollup - c --environment TARGET:reactivity
     {
       stdout: 'inherit' // 子进程打包的信息共享给父进程
     }
