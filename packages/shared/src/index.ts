@@ -1,3 +1,2 @@
-const str2:string = 'shared'
-
-export default str2
+export const isObject = value => typeof value === 'object' && value !== null
+export const extend = Object.assign

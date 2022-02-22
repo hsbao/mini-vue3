@@ -1,3 +1,8 @@
-const str1:string = 'reactivity'
+export {
+  reactive,
+  shallowReactive,
+  readonly,
+  shallowReadonly
+} from './reactive'
 
-export default str1
+export { effect } from './effect'
