@@ -1,3 +1,6 @@
+import { isArray, isIntegerKey, isSymbol } from '@vue/shared'
+import { TriggerOperatorTypes } from './operators'
+
 /**
  * 响应式变化重新执行
  * @param fn 回调：fn里的响应式属性发生变化，会重新执行effect
@@ -65,7 +68,7 @@ function createReactiveEffect(fn, options) {
  * @param key 目标对象中的某个属性
  */
 const targetMap = new WeakMap()
-export function track(target, operatorType, key) {
+export function track(target, operatorType, key, value?) {
   // 如果当前没有effect，说明这个key没在effect中被使用，不用收集effect
   if (!activeEffect) {
     return
@@ -84,5 +87,56 @@ export function track(target, operatorType, key) {
   if (!dep.has(activeEffect)) {
     dep.add(activeEffect) // { target: { name: [ activeEffect, ... ] } }
   }
-  console.log(targetMap)
+  // console.log(targetMap)
+}
+
+/**
+ * 触发了setter，需要把这个属性收集的effect全部执行
+ * @param target 
+ * @param type SET
+ * @param key 根据当前属性去找到收集的effect并全部执行
+ * @param value 
+ * @param oldValue 
+ */
+export function trigger(target, type, key?, newValue?, oldValue?) {
+  // 1. 如果这个属性没有收集effect，那就不处理 (判断当前target是否有缓存过)
+  let depsMap = targetMap.get(target)
+  if (!depsMap) {
+    return
+  }
+
+  // Map.prototype.forEach()：遍历 Map 的所有成员
+  // 如果是数组：{'valueOf' => Set(1), 'toString' => Set(1), 'join' => Set(1), 'length' => Set(1), "0" => Set(1), "1" => Set(1)}
+  // console.log(depsMap)
+
+  let effects = new Set() // 当前属性收集的effect，并且去重
+  const add = effectsToAdd => {
+    if (effectsToAdd) {
+      effectsToAdd.forEach(effect => effects.add(effect))
+    }
+  }
+
+  // 2. 看是否是直接修改数组的长度length(如：arr.length = 100)，因为这样影响较大，也要触发更新
+  if (key === 'length' && isArray(target)) {
+    depsMap.forEach((dep, key) => {
+      if (key === 'length' || (!isSymbol(key) && parseInt(key) > newValue)) { // key > newValue 如果修改的长度小于收集的索引，那么这索引也要触发effect重新执行
+        add(dep)
+      }
+    })
+  } else {
+    // 3. 可能是对象
+    if (key !== undefined) { // 这里一定是修改对象的某个属性
+      add(depsMap.get(key))  // depsMap.get(key) 取出这个key的effect
+    }
+    // 还有可能是修改数组某个索引(如：arr[5] = '5')
+    switch (type) {
+      case TriggerOperatorTypes.ADD: // 判断如果是添加一个索引，就触发length的effect
+        if (isArray(target) && isIntegerKey(key)) {
+          add(depsMap.get('length'))
+        }
+    }
+  }
+
+  // 4. 把这个可以所有的依赖effect全部执行
+  effects.forEach((effect: any) => effect())
 }

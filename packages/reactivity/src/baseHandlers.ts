@@ -1,7 +1,7 @@
-import { extend, isObject } from '@vue/shared'
+import { extend, isObject, isArray, isIntegerKey, hasOwn, hasChanged } from '@vue/shared'
 import { readonly, reactive } from './reactive'
-import { track } from './effect'
-import { TrackOperatorTypes } from './operators'
+import { track, trigger } from './effect'
+import { TrackOperatorTypes, TriggerOperatorTypes } from './operators'
 
 /**
  * 数据劫持getter，拦截获取功能
@@ -21,7 +21,7 @@ function createGetter(isReadonly = false, shallow = false) {
 
     // 不是只读的情况下才收集依赖
     if (!isReadonly) {
-      console.log('执行effect传进去的fn，就会取值，这里需要收集key对应的effect')
+      // 执行effect传进去的fn，就会取值，这里需要收集key对应的effect
       track(target, TrackOperatorTypes.GET, key)
     }
 
@@ -47,14 +47,27 @@ function createGetter(isReadonly = false, shallow = false) {
 function createSetter(shallow = false) {
   /**
    * target: 原始的对象
-   * key: 属性
-   * value: 要给属性设置的值
+   * key: 属性 / 数组的下标 / 数组的length属性(arr.length = 100 这样就是修改数组的length)
+   * value: 要给属性设置新的值
    * receiver：Proxy代理后的对象 --> new Proxy(target)
    */
   return function set(target, key, value, receiver) {
+    const oldValue = target[key] // 记录下老的值
+
+    // 对象 --> 是否已经存在这个key --> 已经存在则是修改，不存在为新增
+    // 数组 --> 当前修改的下标是否在length内 --> 如果是则是修改，改的下标超出了之前的length则是新增
+    const hasKey = isArray(target) && isIntegerKey(key) ? Number(key) < target.length : hasOwn(target, key) 
+
     // 类似 target[key] = value，但是这样有可能设置失败，并且如果失败了也没有任何提示
     // Reflect.set 设置的时候，如果失败，会返回false，更加方便
-    const result = Reflect.set(target, key, receiver)
+    const result = Reflect.set(target, key, value, receiver)
+    if (!hasKey) {
+      // 新增，则为这个key继续收集依赖，effect
+      track(target, TriggerOperatorTypes.ADD, key, value)
+    } else if (hasChanged(oldValue, value)) {
+      // 修改，则需要去触发之前为这个key收集的effect
+      trigger(target, TriggerOperatorTypes.SET, key, value, oldValue)
+    }
 
     return result
   }

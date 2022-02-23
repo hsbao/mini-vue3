@@ -31,7 +31,7 @@ export function createReactiveObject(target, isReadonly, baseHandler) {
   }
 
   // 某个对象可能被代理过了，就不用重复代理
-  const proxyMap = isReadonly ? reactiveMap : reactiveMap
+  const proxyMap = isReadonly ? readonlyMap : reactiveMap
   const existProxy = proxyMap.get(target)
   // 如果存在，直接返回之前的代理结果
   if (existProxy) {
