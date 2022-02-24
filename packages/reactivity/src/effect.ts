@@ -10,7 +10,7 @@ import { TriggerOperatorTypes } from './operators'
 export function effect(fn, options: any = {}) {
   const effectFn = createReactiveEffect(fn, options)
 
-  // effect传进来的fn默认会执行一次，也可以配置默认不执行
+  // effect传进来的fn默认会执行一次，也可以配置默认不执行(计算属性默认不执行)
   if (!options.lazy) {
     effectFn()
   }
@@ -92,11 +92,11 @@ export function track(target, operatorType, key, value?) {
 
 /**
  * 触发了setter，需要把这个属性收集的effect全部执行
- * @param target 
+ * @param target
  * @param type SET
  * @param key 根据当前属性去找到收集的effect并全部执行
- * @param value 
- * @param oldValue 
+ * @param value
+ * @param oldValue
  */
 export function trigger(target, type, key?, newValue?, oldValue?) {
   // 1. 如果这个属性没有收集effect，那就不处理 (判断当前target是否有缓存过)
@@ -119,14 +119,16 @@ export function trigger(target, type, key?, newValue?, oldValue?) {
   // 2. 看是否是直接修改数组的长度length(如：arr.length = 100)，因为这样影响较大，也要触发更新
   if (key === 'length' && isArray(target)) {
     depsMap.forEach((dep, key) => {
-      if (key === 'length' || (!isSymbol(key) && parseInt(key) > newValue)) { // key > newValue 如果修改的长度小于收集的索引，那么这索引也要触发effect重新执行
+      if (key === 'length' || (!isSymbol(key) && parseInt(key) > newValue)) {
+        // key > newValue 如果修改的长度小于收集的索引，那么这索引也要触发effect重新执行
         add(dep)
       }
     })
   } else {
     // 3. 可能是对象
-    if (key !== undefined) { // 这里一定是修改对象的某个属性
-      add(depsMap.get(key))  // depsMap.get(key) 取出这个key的effect
+    if (key !== undefined) {
+      // 这里一定是修改对象的某个属性
+      add(depsMap.get(key)) // depsMap.get(key) 取出这个key的effect
     }
     // 还有可能是修改数组某个索引(如：arr[5] = '5')
     switch (type) {
@@ -138,5 +140,13 @@ export function trigger(target, type, key?, newValue?, oldValue?) {
   }
 
   // 4. 把这个可以所有的依赖effect全部执行
-  effects.forEach((effect: any) => effect())
+  effects.forEach((effect: any) => {
+    // 这里是计算属性的逻辑
+    // 表示计算属性里依赖的属性发生了变化，需要改状态，下次取值需要计算最新值
+    if (effect.options.scheduler) {
+      effect.options.scheduler(effect)
+    } else {
+      effect()
+    }
+  })
 }

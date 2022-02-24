@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <script src="../node_modules/@vue/reactivity/dist/reactivity.global.js"></script>
+    <script>
+      const { ref, computed } = VueReactivity
+      const age = ref(10)
+      const myAge = computed(() => {
+        // 这个回调默认不执行
+        console.log('computed')
+        return age.value + 10
+      })
+
+      // const myAge = computed({
+      //   get() {},
+      //   set() {}
+      // })
+
+      // 和ref类似，计算属性也是通过.value取值
+      // 当取值的时候才执行，并且多次执行不会进行多次计算，而且缓存上一次的结果
+      console.log(myAge.value)
+      console.log(myAge.value)
+
+      age.value = 100 // 依赖的属性发生变化，不会立即重新计算
+      console.log(myAge.value) // 再次取值的时候，才会计算最新值
+    </script>
+  </body>
+</html>
