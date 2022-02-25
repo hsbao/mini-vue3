@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script src="../node_modules/@vue/runtime-dom/dist/runtime-dom.global.js"></script>
+    <script>
+      const { reactive, createApp, h } = VueRuntimeDOM
+      // vue3中，之前vue2的这种optionsAPI的写法也是支持的
+      let App = {
+        data() {
+          return { name: 'xxx' }
+        },
+        render(proxy) {
+          return h('div', { style: { color: 'red' } }, `hello ${proxy.name}`)
+        }
+      }
+
+      let App1 = {
+        // Vue3的setup方法可以替代beforeCreate和created
+        // setup的执行在beforeCreate和created之前，并且只执行一次
+        setup() {
+          const state = reactive({ name: 'xxx' })
+          // 如果setup返回了一个对象，那么这个对象会被合并到render方法里的proxy上
+          return { state }
+        },
+        render(proxy) {
+          return h(
+            'div',
+            { style: { color: 'red' } },
+            `hello ${proxy.state.name}`
+          )
+        }
+      }
+
+      let App2 = {
+        setup(props, context) {
+          const state = reactive({ name: 'xxx' })
+          // 如果setup返回一个函数，那么跟外面写render函数是一样的
+          // 如果外面也写了render方法，还是以setup里返回的render方法优先
+          return function render() {
+            return h('div', { style: { color: 'red' } }, `hello ${state.name}`)
+          }
+        }
+      }
+
+      let App3 = {
+        render() {
+          console.log('render')
+        }
+      }
+
+      // 参数1：根组件；参数2：props
+      createApp(App3, {}).mount('#app')
+    </script>
+  </body>
+</html>

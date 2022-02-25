@@ -3,7 +3,7 @@ const fs = require('fs')
 const execa = require('execa')
 
 // 需要打包的模块名称
-const target = 'reactivity'
+const target = 'runtime-dom'
 
 async function build(target) {
   // 开启子进程，然后使用rollup进行构建打包
