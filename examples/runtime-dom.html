@@ -50,13 +50,16 @@
       }
 
       let App3 = {
-        render() {
-          console.log('render')
+        setup() {
+          console.log('setup')
+        },
+        render(proxy) {
+          console.log('render', proxy.a)
         }
       }
 
       // 参数1：根组件；参数2：props
-      createApp(App3, {}).mount('#app')
+      createApp(App3, { namae: 'hongshibao' }).mount('#app')
     </script>
   </body>
 </html>
