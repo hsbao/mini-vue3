@@ -27,6 +27,10 @@ export function createVNode(type, props, children = null) {
   return vnode
 }
 
+export function isVNode(vnode) {
+  return vnode.__v_isVnode
+}
+
 function normalizeChildren(vnode, children) {
   let type = 0
   if (children === null) {
@@ -36,4 +40,14 @@ function normalizeChildren(vnode, children) {
     type = ShapeFlags.TEXT_CHILDREN
   }
   vnode.shapeFlag = vnode.shapeFlag | type
+}
+
+export const Text = Symbol('Text')
+export function normalizeVNode(child) {
+  // 如果子节点是一个对象，说明是一个vnode了，不用再处理
+  if (isObject(child)) {
+    return child
+  }
+  // 如果是字符串，转成vnode
+  return createVNode(Text, null, String(child))
 }

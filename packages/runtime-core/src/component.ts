@@ -1,6 +1,6 @@
 // 这里是对组件渲染和更新的操作
 
-import { ShapeFlags } from '@vue/shared'
+import { isFunction, isObject, ShapeFlags } from '@vue/shared'
 import { PublicInstanceProxyHandles } from './componentPublicInstance'
 
 export function createComponentInstance(vnode) {
@@ -53,10 +53,30 @@ function setupStatefulComponent(instance) {
   const { setup, render } = Component
   if (setup) {
     const setupContext = createSetupContext(instance)
-    setup(instance.props, setupContext) // setup接收两个参数
+    const setupResult = setup(instance.props, setupContext) // setup接收两个参数
+    handleSetupResult(instance, setupResult)
+  } else {
+    finishComponent(instance)
   }
-  if (render) {
-    render(instance.proxy)
+}
+
+function handleSetupResult(instance, setupResult) {
+  if (isFunction(setupResult)) {
+    instance.render = setupResult
+  } else if (isObject(setupResult)) {
+    instance.setupState = setupResult
+  }
+  finishComponent(instance)
+}
+
+function finishComponent(instance) {
+  const Component = instance.type
+  if (!instance.render) {
+    // 如果都没有render，那就要对template进行编译，拿到render函数
+    if (!Component.render && Component.template) {
+      Component.render = ''
+    }
+    instance.render = Component.render
   }
 }
 

@@ -22,9 +22,17 @@
       }
 
       let App1 = {
+        // 跟Vue2一样，如果给一个组件传属性，也要在组件内props进行声明
+        // 不声明的，会放在attrs上，可以在setup上的context.attrs 取到
+        props: {
+          name: {
+            type: String,
+            default: ''
+          }
+        },
         // Vue3的setup方法可以替代beforeCreate和created
         // setup的执行在beforeCreate和created之前，并且只执行一次
-        setup() {
+        setup(props, context) {
           const state = reactive({ name: 'xxx' })
           // 如果setup返回了一个对象，那么这个对象会被合并到render方法里的proxy上
           return { state }
@@ -51,7 +59,17 @@
 
       let App3 = {
         setup() {
-          console.log('setup')
+          const state = reactive({ name: 'xxx' })
+          const fn = () => {
+            state.name = 'hongshibao'
+            console.log(state)
+          }
+          return () => {
+            return h('div', { style: { color: 'red' }, onClick: fn }, [
+              'hello world，',
+              state.name
+            ])
+          }
         },
         render(proxy) {
           console.log('render', proxy.a)

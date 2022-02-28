@@ -29,4 +29,4 @@ export function createApp(rootComponent, rootProps) {
   return app
 }
 
-export function h() {}
+export * from '@vue/runtime-core'
