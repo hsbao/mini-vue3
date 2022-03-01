@@ -5,7 +5,7 @@ import { patchClass } from './modules/class'
 import { patchEvents } from './modules/events'
 import { patchStyle } from './modules/style'
 
-export function patchProps(el, key, prevValue, nextValue) {
+export function patchProp(el, key, prevValue, nextValue) {
   switch (key) {
     case 'class':
       patchClass(el, nextValue)

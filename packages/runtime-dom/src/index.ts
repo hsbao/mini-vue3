@@ -6,10 +6,10 @@
 import { extend } from '@vue/shared'
 import { createRenderer } from '@vue/runtime-core'
 import { nodeOps } from './nodeOps'
-import { patchProps } from './patchProps'
+import { patchProp } from './patchProps'
 
 // 渲染的时候用到的所有方法
-const rendererOPtions = extend({ patchProps }, nodeOps)
+const rendererOPtions = extend({ patchProp }, nodeOps)
 
 // vue3中的runtime-core提供了核心方法，用来处理渲染的
 export function createApp(rootComponent, rootProps) {

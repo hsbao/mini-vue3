@@ -74,7 +74,7 @@ function finishComponent(instance) {
   if (!instance.render) {
     // 如果都没有render，那就要对template进行编译，拿到render函数
     if (!Component.render && Component.template) {
-      Component.render = ''
+      Component.render = '' // 编辑template，目前还没实现
     }
     instance.render = Component.render
   }
