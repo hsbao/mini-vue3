@@ -249,7 +249,7 @@ export function createRenderer(rendererOptions) {
 
       // 1. vue3用新的children做映射表，vue2用就的列表做映射表
       const keyToNewIndexMap = new Map()
-      for (let i = s2; i < e2; i++) {
+      for (let i = s2; i <= e2; i++) {
         const childVNode = newChildren[i]
         keyToNewIndexMap.set(childVNode.key, i)
       }
@@ -260,9 +260,9 @@ export function createRenderer(rendererOptions) {
        *  a       b         c d e q          f      g
        *  a       b         e c d h          f      g
        *            s2=i=2              e2=5
-       * 
+       *
        *  经过上面头头比较，尾尾比较, s1和s2和i一样等于2，e1和e2一样等于5
-       *  
+       *
        *  e2 - s2 + 1则是新的子节点中没比较到的个数，也就是 e c d h 这4个
        */
       const toBaPatched = e2 - s2 + 1
@@ -271,7 +271,7 @@ export function createRenderer(rendererOptions) {
       const newIndexToOldIndexMap = new Array(toBaPatched).fill(0) // [0, 0, 0, 0]
 
       // 2. 构建好映射表后，遍历老的列表，看有没有一样的key
-      for (let i = s1; i < e1; i++) {
+      for (let i = s1; i <= e1; i++) {
         const oldVNode = oldChildren[i]
         const newIndex = keyToNewIndexMap.get(oldVNode.key)
         if (!newIndex) {
@@ -284,7 +284,44 @@ export function createRenderer(rendererOptions) {
           patch(oldVNode, newChildren[newIndex], parentNode)
         }
       }
+
+      /**
+       * [5, 3, 4, 0]
+       * 5代表新children中的e在老的children中第5个位置，说明是找到了，可以复用
+       * 3代表新children中的c在老的children中第3个位置，说明是找到了，可以复用
+       * 4代表新children中的d在老的children中第4个位置，说明是找到了，可以复用
+       * 0代表新children中的h在老的children中没找到
+       */
       console.log(newIndexToOldIndexMap)
+
+      const increasingNewIndexSequence = getSequence(newIndexToOldIndexMap)
+
+      console.log('最长递增子序列', increasingNewIndexSequence)
+
+      let j = increasingNewIndexSequence.length - 1
+
+      for (let k = toBaPatched - 1; k >= 0; k--) {
+        let currentIndex = k + s2 // 找到最后一个h的索引
+        const child = newChildren[currentIndex] // 找到h对应的节点
+
+        // 找到h下一个元素，用于判断是插入到最后还是某一个元素之前
+        // 跟上面i > e1的判断一样
+        const anchor =
+          currentIndex + 1 < newChildren.length
+            ? newChildren[currentIndex + 1].el
+            : null
+
+        if (newIndexToOldIndexMap[k] === 0) {
+          // 为0说明新children中的h在老的children中没找到，代表是新增
+          patch(null, child, parentNode, anchor)
+        } else {
+          if (j < 0 || k !== increasingNewIndexSequence[j]) {
+            hostInsert(child.el, parentNode, anchor)
+          } else {
+            j--
+          }
+        }
+      }
 
       // 3.最后是移动节点，并且将新增的节点插入正确的位置
     }
@@ -355,4 +392,46 @@ export function createRenderer(rendererOptions) {
   return {
     createApp: createAppAPI(render)
   }
+}
+
+// 最长递增子序列
+function getSequence(arr: number[]): number[] {
+  const p = arr.slice()
+  const result = [0]
+  let i, j, u, v, c
+  const len = arr.length
+  for (i = 0; i < len; i++) {
+    const arrI = arr[i]
+    if (arrI !== 0) {
+      j = result[result.length - 1]
+      if (arr[j] < arrI) {
+        p[i] = j
+        result.push(i)
+        continue
+      }
+      u = 0
+      v = result.length - 1
+      while (u < v) {
+        c = (u + v) >> 1
+        if (arr[result[c]] < arrI) {
+          u = c + 1
+        } else {
+          v = c
+        }
+      }
+      if (arrI < arr[result[u]]) {
+        if (u > 0) {
+          p[i] = result[u - 1]
+        }
+        result[u] = i
+      }
+    }
+  }
+  u = result.length
+  v = result[u - 1]
+  while (u-- > 0) {
+    result[u] = v
+    v = p[v]
+  }
+  return result
 }
