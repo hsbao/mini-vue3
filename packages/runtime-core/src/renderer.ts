@@ -145,6 +145,45 @@ export function createRenderer(rendererOptions) {
       }
     }
   }
+  // 更新子节点
+  const patchChildren = (n1, n2, parentNode) => {
+    const oldChildren = n1.children // 旧的子节点
+    const newChildren = n2.children // 新的子节点
+
+    const prevShapeFlag = n1.shapeFlag
+    const nextShapeFlag = n2.shapeFlag
+
+    // 1. 新的vnode的子节点只有一个文本节点
+    if (nextShapeFlag & ShapeFlags.TEXT_CHILDREN) {
+      // 旧的子节点是数组，需要删除掉之前的
+      if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+        unmountChildren(oldChildren)
+      }
+      // 2. 如果新旧都是文本，直接替换文本就好了
+      if (newChildren !== oldChildren) {
+        hostSetElementText(parentNode, newChildren)
+      }
+    } else {
+      if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+        if (nextShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+          // 3. 新旧都是数组，要进行dom-diff，核心
+          patchKeyChildren(oldChildren, newChildren, parentNode)
+        } else {
+          // 代表新的vnode的children为空
+          unmountChildren(oldChildren)
+        }
+      } else {
+        // 上一次是文本
+        if (prevShapeFlag & ShapeFlags.TEXT_CHILDREN) {
+          hostSetElementText(parentNode, '')
+        }
+        // 旧的子节点是文本，新的子节点是数组，则把文本设置为空，然后渲染子节点
+        if (nextShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+          mountChildren(parentNode, newChildren)
+        }
+      }
+    }
+  }
   // dom-diff核心
   const patchKeyChildren = (oldChildren, newChildren, parentNode) => {
     let i = 0 // 默认从0开始比较
@@ -203,16 +242,33 @@ export function createRenderer(rendererOptions) {
         i++
       }
     } else {
-      // 最核心的，乱序比较。用新的列表做成一个映射表，然后去老的列表找，找到就复用，找不到就删除或是新增
-      let s1 = i
-      let s2 = i
+      // 最核心的，乱序比较。用新的列表做成一个映射表，然后循环老的列表，找到就复用，找不到就删除或是新增
+
+      let s1 = i // 旧的children中还没比较到的子节点，最开始的下标
+      let s2 = i // 新的children中还没比较到的子节点，最开始的下标
+
       // 1. vue3用新的children做映射表，vue2用就的列表做映射表
       const keyToNewIndexMap = new Map()
       for (let i = s2; i < e2; i++) {
         const childVNode = newChildren[i]
         keyToNewIndexMap.set(childVNode.key, i)
       }
-      console.log(keyToNewIndexMap) // {a:0, b:1, c:2}
+      console.log(keyToNewIndexMap) // {a:0, b:1, c:2}  key: index
+
+      /**
+       *            s1=i=2              e1=5
+       *  a       b         c d e q          f      g
+       *  a       b         e c d h          f      g
+       *            s2=i=2              e2=5
+       * 
+       *  经过上面头头比较，尾尾比较, s1和s2和i一样等于2，e1和e2一样等于5
+       *  
+       *  e2 - s2 + 1则是新的子节点中没比较到的个数，也就是 e c d h 这4个
+       */
+      const toBaPatched = e2 - s2 + 1
+      console.log('newChildren 中还没对比到的个数：', toBaPatched)
+
+      const newIndexToOldIndexMap = new Array(toBaPatched).fill(0) // [0, 0, 0, 0]
 
       // 2. 构建好映射表后，遍历老的列表，看有没有一样的key
       for (let i = s1; i < e1; i++) {
@@ -222,51 +278,15 @@ export function createRenderer(rendererOptions) {
           // 如果没有，说明这个老的vnode在新的列表里没找到，需要删除
           unmount(oldVNode)
         } else {
+          newIndexToOldIndexMap[newIndex - s2] = i + 1
+
           // 有则说明找到了，进行patch
           patch(oldVNode, newChildren[newIndex], parentNode)
         }
       }
+      console.log(newIndexToOldIndexMap)
 
       // 3.最后是移动节点，并且将新增的节点插入正确的位置
-    }
-  }
-  // 更新子节点
-  const patchChildren = (n1, n2, parentNode) => {
-    const oldChildren = n1.children // 旧的子节点
-    const newChildren = n2.children // 新的子节点
-
-    const prevShapeFlag = n1.shapeFlag
-    const nextShapeFlag = n2.shapeFlag
-
-    // 1. 新的vnode的子节点只有一个文本节点
-    if (nextShapeFlag & ShapeFlags.TEXT_CHILDREN) {
-      // 旧的子节点是数组，需要删除掉之前的
-      if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
-        unmountChildren(oldChildren)
-      }
-      // 2. 如果新旧都是文本，直接替换文本就好了
-      if (newChildren !== oldChildren) {
-        hostSetElementText(parentNode, newChildren)
-      }
-    } else {
-      if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
-        if (nextShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
-          // 3. 新旧都是数组，要进行dom-diff，核心
-          patchKeyChildren(oldChildren, newChildren, parentNode)
-        } else {
-          // 代表新的vnode的children为空
-          unmountChildren(oldChildren)
-        }
-      } else {
-        // 上一次是文本
-        if (prevShapeFlag & ShapeFlags.TEXT_CHILDREN) {
-          hostSetElementText(parentNode, '')
-        }
-        // 旧的子节点是文本，新的子节点是数组，则把文本设置为空，然后渲染子节点
-        if (nextShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
-          mountChildren(parentNode, newChildren)
-        }
-      }
     }
   }
   // 处理文本节点
