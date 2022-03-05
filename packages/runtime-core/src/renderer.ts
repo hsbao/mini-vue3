@@ -1,6 +1,7 @@
 import { effect } from '@vue/reactivity'
 import { ShapeFlags } from '@vue/shared'
 import { createAppAPI } from './apiCreateApp'
+import { invokeArrayFns } from './apiLifecycle'
 import { createComponentInstance, setupComponent } from './component'
 import { queueJob } from './scheduler'
 import { normalizeVNode, Text } from './vnode'
@@ -26,6 +27,12 @@ export function createRenderer(rendererOptions) {
     effect(
       function componentEffect() {
         if (!instance.isMounted) {
+          const { bm, m } = instance
+          // onBeforeMount 生命周期函数
+          if (bm) {
+            invokeArrayFns(bm)
+          }
+
           // 组件初次渲染
           let proxyToUse = instance.proxy
           let subTree = (instance.subTree = instance.render.call(
@@ -35,8 +42,19 @@ export function createRenderer(rendererOptions) {
           // 初次渲染，旧的vnode没有，然后用render函数返回的vnode进行渲染
           patch(null, subTree, container)
           instance.isMounted = true
+
+          // onMounted 生命周期函数
+          if (m) {
+            invokeArrayFns(m)
+          }
         } else {
           // 组件更新
+          const { bu, u } = instance
+
+          // onBeforeUpdate 生命周期函数
+          if (bu) {
+            invokeArrayFns(bu)
+          }
           const prevTree = instance.subTree // 上面是渲染，记录下上一次的vnode赋值到instance.subTree
           let proxyToUse = instance.proxy
           let nextTree = (instance.subTree = instance.render.call(
@@ -44,6 +62,10 @@ export function createRenderer(rendererOptions) {
             proxyToUse
           ))
           patch(prevTree, nextTree, container)
+          // onUpdate 生命周期函数
+          if (u) {
+            invokeArrayFns(u)
+          }
         }
       },
       {

@@ -45,6 +45,17 @@ export function setupComponent(instance) {
   }
 }
 
+// 记录下当前的实例，父组件渲染的时候指向父组件的实例，子组件渲染的时候指向子组件的实例
+export let currentInstance = null
+
+export const setCurrentInstance = instance => {
+  currentInstance = instance
+}
+
+export const getCurrentInstance = () => {
+  return currentInstance
+}
+
 function setupStatefulComponent(instance) {
   // 1. 代理：就是要传给render函数的参数
   instance.proxy = new Proxy(instance.ctx, PublicInstanceProxyHandles)
@@ -52,8 +63,11 @@ function setupStatefulComponent(instance) {
   const Component = instance.type // 如果是一个对象，说明是组件，如果是一个字符串，那就是普通元素
   const { setup, render } = Component
   if (setup) {
+    currentInstance = instance
     const setupContext = createSetupContext(instance)
     const setupResult = setup(instance.props, setupContext) // setup接收两个参数
+    currentInstance = null
+
     handleSetupResult(instance, setupResult)
   } else {
     finishComponent(instance)
